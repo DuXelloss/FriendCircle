@@ -161,9 +161,6 @@ public class CommentPopup implements View.OnClickListener {
      * @param v
      */
     public void showPopupWindow(View v) {
-//        PopupWindow popupWindow = getPopupWindow();
-//        popupWindow.showAsDropDown(v);
-        //       super.showPopupWindow(v);
         int animaViewWidth = -UIHelper.dipToPx(140);
         int selfHeight = (int) (-v.getMeasuredHeight() * 1.7);
         KLog.d("Show~~~~~ : animaViewWidth:  " + animaViewWidth + "  selfHeight:  " + selfHeight);
@@ -193,24 +190,32 @@ public class CommentPopup implements View.OnClickListener {
     }
 
     @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.item_like:
-                if (mOnCommentPopupClickListener != null) {
-                    mOnCommentPopupClickListener.onLikeClick(v, mMomentsInfo, hasLiked);
-                    mLikeView.clearAnimation();
-                    mLikeView.startAnimation(mScaleAnimation);
+    public void onClick(final View v) {
+        v.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+                switch (v.getId()) {
+                    case R.id.item_like:
+                        if (mOnCommentPopupClickListener != null) {
+                            mOnCommentPopupClickListener.onLikeClick(v, mMomentsInfo, hasLiked);
+                            mLikeView.clearAnimation();
+                            mLikeView.startAnimation(mScaleAnimation);
+                        }
+                        mPopupWindow.dismiss();
+                        break;
+                    case R.id.item_comment:
+                        if (mOnCommentPopupClickListener != null) {
+                            mOnCommentPopupClickListener.onCommentClick(v, mMomentsInfo);
+                            if (exitAnimation != null && mAnimaView != null) {
+                                mAnimaView.clearAnimation();
+                            }
+                        }
+                        mPopupWindow.dismiss();
+                        break;
                 }
-                break;
-            case R.id.item_comment:
-                if (mOnCommentPopupClickListener != null) {
-                    mOnCommentPopupClickListener.onCommentClick(v, mMomentsInfo);
-                    if (this.exitAnimation != null && this.mAnimaView != null) {
-                        this.mAnimaView.clearAnimation();
-                    }
-                }
-                break;
-        }
+            }
+        }, 100);
     }
     //=============================================================Getter/Setter
 
