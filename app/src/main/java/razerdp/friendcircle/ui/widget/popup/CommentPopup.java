@@ -1,34 +1,38 @@
 package razerdp.friendcircle.ui.widget.popup;
 
 import android.app.Activity;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import razerdp.basepopup.BasePopupWindow;
+import com.socks.library.KLog;
+
 import razerdp.friendcircle.R;
 import razerdp.friendcircle.app.manager.LocalHostManager;
 import razerdp.friendcircle.app.mvp.model.entity.LikesInfo;
 import razerdp.friendcircle.app.mvp.model.entity.MomentsInfo;
-import razerdp.friendcircle.app.mvp.model.entity.UserInfo;
-import razerdp.github.com.baselibrary.utils.ui.UIHelper;
 import razerdp.github.com.baselibrary.thirdpart.WeakHandler;
 import razerdp.github.com.baselibrary.utils.ToolUtil;
+import razerdp.github.com.baselibrary.utils.ui.UIHelper;
 
 /**
  * Created by 大灯泡 on 2016/3/6.
  * 朋友圈点赞
  */
-public class CommentPopup extends BasePopupWindow implements View.OnClickListener {
+public class CommentPopup implements View.OnClickListener {
     private static final String TAG = "CommentPopup";
 
     private ImageView mLikeView;
@@ -38,7 +42,7 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
     private RelativeLayout mCommentClickLayout;
 
     private MomentsInfo mMomentsInfo;
-
+    PopupWindow mPopupWindow;
     private WeakHandler handler;
     private ScaleAnimation mScaleAnimation;
 
@@ -46,12 +50,23 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
 
     //是否已经点赞
     private boolean hasLiked;
+    View mAnimaView;
+    View mPopupView;
+    Animation showAnimation;
+    Animation exitAnimation;
+
+    private Activity context;
 
     public CommentPopup(Activity context) {
-        super(context, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        setNeedPopupFade(false);
-        setRelativeToAnchorView(true);
+        super();
+        this.context = context;
+        //super(context, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+//        setNeedPopupFade(false);
+//        setRelativeToAnchorView(true);
         handler = new WeakHandler();
+
+        mPopupView = onCreatePopupView();
+        mAnimaView = initAnimaView();
 
         mLikeView = (ImageView) findViewById(R.id.iv_like);
         mLikeText = (TextView) findViewById(R.id.tv_like);
@@ -63,9 +78,29 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
         mCommentClickLayout.setOnClickListener(this);
 
         buildAnima();
+
+        showAnimation = initShowAnimation();
+        exitAnimation = initExitAnimation();
+
+        mAnimaView.setAnimation(showAnimation);
+        mPopupWindow = new PopupWindow(mPopupView, FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+        mPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+            @Override
+            public void onDismiss() {
+                if (exitAnimation != null && mAnimaView != null) {
+                    mAnimaView.startAnimation(exitAnimation);
+                }
+            }
+        });
+        //setContentView(mPopupView);
+        setDismissWhenTouchOuside(true);
+        setBackPressEnable(true);
     }
 
-    @Override
+    protected View findViewById(int resId) {
+        return mPopupView.findViewById(resId);
+    }
+
     protected Animation initShowAnimation() {
         TranslateAnimation showAnima = new TranslateAnimation(UIHelper.dipToPx(180f), 0, 0, 0);
         showAnima.setInterpolator(new DecelerateInterpolator());
@@ -74,7 +109,6 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
         return showAnima;
     }
 
-    @Override
     protected Animation initExitAnimation() {
         TranslateAnimation exitAnima = new TranslateAnimation(0, UIHelper.dipToPx(180f), 0, 0);
         exitAnima.setInterpolator(new DecelerateInterpolator());
@@ -85,7 +119,7 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
 
     private void buildAnima() {
         mScaleAnimation = new ScaleAnimation(1f, 2.5f, 1f, 2.5f, Animation.RELATIVE_TO_SELF, 0.5f,
-                                             Animation.RELATIVE_TO_SELF, 0.5f);
+                Animation.RELATIVE_TO_SELF, 0.5f);
         mScaleAnimation.setDuration(300);
         mScaleAnimation.setInterpolator(new SpringInterPolator());
         mScaleAnimation.setFillAfter(false);
@@ -101,7 +135,7 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        dismiss();
+                        mPopupWindow.dismiss();
                     }
                 }, 150);
             }
@@ -113,26 +147,49 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
         });
     }
 
-    @Override
-    public View getClickToDismissView() {
-        return null;
-    }
-
-    @Override
     public View onCreatePopupView() {
-        return createPopupById(R.layout.popup_comment);
+        return LayoutInflater.from(this.context).inflate(R.layout.popup_comment, null);
     }
 
-    @Override
     public View initAnimaView() {
         return findViewById(R.id.comment_popup_contianer);
     }
 
-    @Override
+    /**
+     * 要显示View
+     *
+     * @param v
+     */
     public void showPopupWindow(View v) {
-        setOffsetX(-getPopupViewWidth() - 10);
-        setOffsetY(-v.getHeight());
-        super.showPopupWindow(v);
+//        PopupWindow popupWindow = getPopupWindow();
+//        popupWindow.showAsDropDown(v);
+        //       super.showPopupWindow(v);
+        int animaViewWidth = -UIHelper.dipToPx(140);
+        int selfHeight = (int) (-v.getMeasuredHeight() * 1.7);
+        KLog.d("Show~~~~~ : animaViewWidth:  " + animaViewWidth + "  selfHeight:  " + selfHeight);
+        mPopupWindow.showAsDropDown(v, animaViewWidth, selfHeight);
+        mAnimaView.startAnimation(showAnimation);
+    }
+
+    public void setBackPressEnable(boolean backPressEnable) {
+        if (backPressEnable) {
+            mPopupWindow.setBackgroundDrawable(new ColorDrawable());
+        } else {
+            mPopupWindow.setBackgroundDrawable(null);
+        }
+
+    }
+
+    public void setDismissWhenTouchOuside(boolean dismissWhenTouchOuside) {
+        if (dismissWhenTouchOuside) {
+            mPopupWindow.setFocusable(true);
+            mPopupWindow.setOutsideTouchable(true);
+            mPopupWindow.setBackgroundDrawable(new ColorDrawable());
+        } else {
+            mPopupWindow.setFocusable(false);
+            mPopupWindow.setOutsideTouchable(false);
+            mPopupWindow.setBackgroundDrawable((Drawable) null);
+        }
     }
 
     @Override
@@ -148,7 +205,9 @@ public class CommentPopup extends BasePopupWindow implements View.OnClickListene
             case R.id.item_comment:
                 if (mOnCommentPopupClickListener != null) {
                     mOnCommentPopupClickListener.onCommentClick(v, mMomentsInfo);
-                    dismissWithOutAnima();
+                    if (this.exitAnimation != null && this.mAnimaView != null) {
+                        this.mAnimaView.clearAnimation();
+                    }
                 }
                 break;
         }
